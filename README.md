@@ -80,7 +80,7 @@ A arquitetura será evoluída gradualmente conforme novas funcionalidades forem 
 |---|---|---|
 | 1 | Fundamentos e definição do domínio | Concluída |
 | 2 | Modelagem das classes Java | Concluída |
-| 3 | Implementação do Chain of Responsibility | Pendente |
+| 3 | Implementação do Chain of Responsibility | oncluída |
 | 4 | Regras de negócio | Pendente |
 | 5 | API REST com Spring Boot | Pendente |
 | 6 | Persistência com JPA e PostgreSQL | Pendente |
