@@ -10,13 +10,16 @@ public class StockValidationHandler implements OrderHandler {
             return false;
         var items = order.getItems();
 
-        //valida se todos os items tem stock necessario
+        // valida se todos os items tem stock necessario
         for (var item : items) {
             if (item.getQuantity() == null
                     || item.getProduct() == null
                     || item.getProduct().getStockQuantity() <= 0
-                    || item.getQuantity() > item.getProduct().getStockQuantity())
+                    || item.getQuantity() > item.getProduct().getStockQuantity()) {
+                order.reject();
                 return false;
+            }
+
         }
 
         if (nextHandler == null)

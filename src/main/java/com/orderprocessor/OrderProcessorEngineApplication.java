@@ -1,55 +1,114 @@
+
 package com.orderprocessor;
 
 import java.math.BigDecimal;
 import java.util.List;
 
-import com.orderprocessor.domain.handler.OrderHandler;
 import com.orderprocessor.domain.handler.OrderProcessingChain;
 import com.orderprocessor.domain.model.Order;
 import com.orderprocessor.domain.model.OrderItem;
+import com.orderprocessor.domain.model.PaymentMethod;
 import com.orderprocessor.domain.model.Product;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import com.orderprocessor.domain.exception.NoStockQuantityException;
 
-@SpringBootApplication
 public class OrderProcessorEngineApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(OrderProcessorEngineApplication.class, args);
 
-        // Criando produtos
-        Product product1 = new Product(
-                "Notebook",
-                new BigDecimal("3000.00"),
-                10
+        testarPedidoAprovado();
+        testarPagamentoRejeitado();
+        testarEstoqueInsuficiente();
+
+    }
+
+    private static void testarPedidoAprovado() {
+        System.out.println("\n========== TESTE 1: PEDIDO APROVADO ==========");
+
+        Product product = new Product(
+            "Notebook", new BigDecimal("1000.00"), 10
         );
 
-        Product product2 = new Product(
-                "Mouse",
-                new BigDecimal("100.00"),
-                5
-        );
+        OrderItem item = new OrderItem(product, 2);
 
-        // Criando itens do pedido
-        OrderItem item1 = new OrderItem(product1, 15);
-        OrderItem item2 = new OrderItem(product2, 1);
-
-        // Criando pedido
         Order order = new Order(
-                "João",
-                List.of(item1, item2)
+            "Cliente Teste",
+            List.of(item),
+            PaymentMethod.PIX
         );
 
-        // Montando a cadeia
+        executarPedido(order);
+
+        System.out.println("Status: " + order.getStatus());
+        System.out.println("Pagamento: " + order.getPayment().getPaymentStatus());
+        System.out.println("Estoque esperado: 8");
+        System.out.println("Estoque atual: " + product.getStockQuantity());
+    }
+
+    private static void testarPagamentoRejeitado() {
+        System.out.println("\n========== TESTE 2: PAGAMENTO REJEITADO ==========");
+
+        Product product = new Product(
+            "Computador", new BigDecimal("6000.00"), 10
+        );
+
+        OrderItem item = new OrderItem(product, 1);
+
+        Order order = new Order(
+            "Cliente Teste",
+            List.of(item),
+            PaymentMethod.CREDIT_CARD
+        );
+
+        executarPedido(order);
+
+        System.out.println("Status: " + order.getStatus());
+        System.out.println("Pagamento: " + order.getPayment().getPaymentStatus());
+        System.out.println("Estoque esperado: 10");
+        System.out.println("Estoque atual: " + product.getStockQuantity());
+    }
+
+    private static void testarEstoqueInsuficiente() {
+        System.out.println("\n========== TESTE 3: ESTOQUE INSUFICIENTE ==========");
+
+        Product productA = new Product(
+            "Mouse", new BigDecimal("100.00"), 10
+        );
+
+        Product productB = new Product(
+            "Teclado", new BigDecimal("200.00"), 1
+        );
+
+        OrderItem itemA = new OrderItem(productA, 2);
+        OrderItem itemB = new OrderItem(productB, 3);
+
+        Order order = new Order(
+            "Cliente Teste",
+            List.of(itemA, itemB),
+            PaymentMethod.PIX
+        );
+
+        executarPedido(order);
+
+        System.out.println("Status: " + order.getStatus());
+        System.out.println("Estoque esperado A: 10");
+        System.out.println("Estoque atual A: " + productA.getStockQuantity());
+        System.out.println("Estoque esperado B: 1");
+        System.out.println("Estoque atual B: " + productB.getStockQuantity());
+    }
+
+    private static void executarPedido(Order order) {
         OrderProcessingChain chain = new OrderProcessingChain();
 
-        // Obtendo o primeiro handler
-        OrderHandler firstHandler = chain.getPrimeiroHandler();
+        try {
+            boolean resultado = chain.getPrimeiroHandler().processar(order);
 
-        // Processando pedido
-        boolean result = firstHandler.processar(order);
+            System.out.println("Processamento concluído: " + resultado);
+            System.out.println("Subtotal: " + order.getTotalAmount());
+            System.out.println("Total final: " + order.calculaFinalAmount());
 
-        System.out.println("Pedido aprovado? " + result);
+        } catch (NoStockQuantityException e) {
+            System.out.println("Erro de estoque: " + e.getMessage());
+        }
     }
 }

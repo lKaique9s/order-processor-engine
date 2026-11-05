@@ -1,4 +1,4 @@
-package com.orderprocessor.service;
+package com.orderprocessor.domain.exception;
 
 public class NoStockQuantityException extends RuntimeException{
 

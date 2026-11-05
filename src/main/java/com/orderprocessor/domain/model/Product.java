@@ -2,7 +2,7 @@ package com.orderprocessor.domain.model;
 
 import java.math.BigDecimal;
 
-import com.orderprocessor.service.NoStockQuantityException;
+import com.orderprocessor.domain.exception.NoStockQuantityException;
 
 public class Product {
     private Long id;

@@ -15,8 +15,11 @@ public class OrderValidationHandler implements OrderHandler {
                 || order.getItems().isEmpty())
             return false;
 
+        order.process();
+
         if (nextHandler == null)
             return true;
+
         return nextHandler.processar(order);
     }
 
