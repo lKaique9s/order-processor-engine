@@ -6,20 +6,54 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "orders")
 public class Order {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(nullable = false)
     private Long id;
+    @OneToMany(mappedBy = "order", cascade = CascadeType.PERSIST, orphanRemoval = true)
     private List<OrderItem> items;
-    private String customerName;
-    private BigDecimal totalAmount;
-    private BigDecimal discountAmount;
-    private BigDecimal shippingAmount;
-    private OrderStatus status;
-    private LocalDateTime createdAt;
+    @OneToOne(cascade = CascadeType.PERSIST)
+    @JoinColumn(name = "payment_id", nullable = true)
     private Payment payment;
+    @Column(nullable = false)
+    private String customerName;
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal totalAmount;
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal discountAmount;
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal shippingAmount;
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private OrderStatus status;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private PaymentMethod paymentMethod;
+
+    protected Order() {
+    }
 
     public Order(String customerName, List<OrderItem> items, PaymentMethod paymentMethod) {
         this.items = new ArrayList<>(items);
+        associaItemToOrder(this.items);
         this.customerName = customerName;
         this.createdAt = LocalDateTime.now();
         this.totalAmount = calculaTotalAmount();
@@ -52,11 +86,14 @@ public class Order {
         items.add(item);
         var newItemValue = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
         totalAmount = totalAmount.add(newItemValue);
+        item.setOrder(this);
     }
 
     public void removeItem(OrderItem item) {
-        if (items.remove(item))
+        if (items.remove(item)) {
             this.totalAmount = calculaTotalAmount();
+            item.removeOrderReference();
+        }
     }
 
     public Long getId() {
@@ -112,6 +149,7 @@ public class Order {
         if (payment == null)
             throw new IllegalArgumentException();
         this.payment = payment;
+        payment.setOrder(this);
     }
 
     public PaymentMethod getPaymentMethod() {
@@ -138,10 +176,18 @@ public class Order {
         this.status = OrderStatus.REJECTED;
     }
 
-    public void process(){
+    public void process() {
         if (status != OrderStatus.CREATED)
             throw new IllegalArgumentException();
         this.status = OrderStatus.PROCESSING;
+    }
+
+    private void associaItemToOrder(List<OrderItem> items) {
+        if (items == null)
+            throw new IllegalArgumentException();
+        for (var item : items) {
+            item.setOrder(this);
+        }
     }
 
 }

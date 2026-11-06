@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.orderprocessor.application.dto.CreateOrderRequest;
 import com.orderprocessor.application.dto.OrderResponse;
@@ -12,15 +13,19 @@ import com.orderprocessor.domain.handler.OrderHandler;
 import com.orderprocessor.domain.handler.OrderProcessingChain;
 import com.orderprocessor.domain.model.Order;
 import com.orderprocessor.domain.model.OrderItem;
-import com.orderprocessor.infrastructure.catalog.ProductCatalog;
+import com.orderprocessor.infrastructure.repository.OrderRepository;
+import com.orderprocessor.infrastructure.repository.ProductRepository;
 
 @Service
 public class OrderService {
-    private final ProductCatalog productCatalog;
+    private final ProductRepository productRepository;
+    private final OrderRepository orderRepository;
     private final OrderProcessingChain orderProcessingChain;
 
-    public OrderService(ProductCatalog productCatalog, OrderProcessingChain orderProcessingChain) {
-        this.productCatalog = productCatalog;
+    public OrderService(ProductRepository productRepository, OrderRepository orderRepository,
+            OrderProcessingChain orderProcessingChain) {
+        this.productRepository = productRepository;
+        this.orderRepository = orderRepository;
         this.orderProcessingChain = orderProcessingChain;
     }
 
@@ -29,9 +34,8 @@ public class OrderService {
         List<OrderItem> listOrderItems = new ArrayList<>();
 
         for (var item : items) {
-            var product = productCatalog.findById(item.getProductId());
-            if (product == null)
-                throw new ProductNotFoundException();
+            var product = productRepository.findById(item.getProductId())
+                    .orElseThrow(() -> new ProductNotFoundException());
             listOrderItems.add(new OrderItem(product, item.getQuantity()));
         }
 
@@ -47,9 +51,11 @@ public class OrderService {
     public OrderResponse processarPedido(Order order) {
         OrderHandler primeiroHandler = orderProcessingChain.getPrimeiroHandler();
         primeiroHandler.processar(order);
+        orderRepository.save(order);
         return new OrderResponse(order);
     }
 
+    @Transactional
     public OrderResponse receberPedido(CreateOrderRequest createOrderRequest) {
         Order order = criarOrder(createOrderRequest);
         return processarPedido(order);

@@ -10,28 +10,27 @@ Construir uma aplicação capaz de processar pedidos de e-commerce por meio de u
 
 Cada etapa será representada por um handler, responsável por executar uma operação específica e decidir se o pedido pode continuar sendo processado.
 
-O projeto será desenvolvido incrementalmente, priorizando a compreensão dos conceitos, a qualidade do código e a capacidade de tomar decisões de arquitetura.
+O projeto é desenvolvido incrementalmente, priorizando a compreensão dos conceitos, a qualidade do código e a capacidade de tomar decisões de arquitetura.
 
 ## Tecnologias
 
-### Base do projeto
+### Implementadas
 
 - Java 21
 - Spring Boot 4.1.2
 - Spring Web MVC
+- Spring Data JPA
+- Hibernate
+- PostgreSQL
 - Jakarta Bean Validation
 - Maven
 
-### Tecnologias planejadas
+### Planejadas
 
-- Spring Data JPA
-- PostgreSQL
 - JUnit
 - Mockito
 - Docker
 - Swagger / OpenAPI
-
-As tecnologias serão introduzidas conforme a necessidade de cada etapa do desenvolvimento.
 
 ## Funcionalidades
 
@@ -44,21 +43,22 @@ As tecnologias serão introduzidas conforme a necessidade de cada etapa do desen
 - [x] Cálculo de frete.
 - [x] Simulação de pagamento.
 - [x] Confirmação ou rejeição de pedidos.
+- [x] Persistência de produtos, pedidos, itens e pagamentos.
+- [x] Persistência de pedidos rejeitados.
 - [ ] Consulta de pedidos.
-- [ ] Persistência dos dados.
 - [ ] Testes automatizados.
 
 ## Design Pattern
 
-O principal padrão de projeto utilizado será **Chain of Responsibility**.
+O principal padrão de projeto utilizado é **Chain of Responsibility**.
 
-O processamento de um pedido será organizado em uma cadeia de handlers independentes. Cada handler terá uma responsabilidade específica e poderá:
+O processamento de um pedido é organizado em uma cadeia de handlers independentes. Cada handler possui uma responsabilidade específica e pode:
 
 - Executar sua etapa de processamento.
 - Encaminhar o pedido para o próximo handler.
 - Interromper o processamento quando uma condição impedir sua continuidade.
 
-A estrutura permitirá adicionar, remover ou reorganizar etapas com menor acoplamento entre as responsabilidades.
+A estrutura permite adicionar, remover ou reorganizar etapas com menor acoplamento entre as responsabilidades.
 
 ### Cadeia de processamento
 
@@ -80,7 +80,7 @@ O projeto segue uma organização baseada na separação de responsabilidades, u
 
 ### Modelagem do domínio
 
-A modelagem inicial contempla:
+A modelagem contempla:
 
 - `Product`: representa um produto e controla suas operações de estoque.
 - `OrderItem`: representa um produto dentro de um pedido, registrando quantidade e preço unitário.
@@ -92,15 +92,13 @@ A modelagem inicial contempla:
 
 ### Organização das camadas
 
-A partir da implementação da API REST, foram introduzidas as seguintes camadas:
+A aplicação utiliza as seguintes camadas:
 
 - `controller`: recebe requisições HTTP e define as respostas da API.
 - `application.dto`: contém os objetos de transferência de dados utilizados nas requisições e respostas.
 - `application.service`: coordena os casos de uso da aplicação.
 - `domain`: concentra as entidades, regras de negócio, handlers e exceções do domínio.
-- `infrastructure`: contém componentes de infraestrutura, como o catálogo temporário de produtos.
-
-A arquitetura será evoluída gradualmente conforme novas funcionalidades forem implementadas.
+- `infrastructure`: contém componentes de infraestrutura, configuração e repositórios de persistência.
 
 ## API REST
 
@@ -163,7 +161,7 @@ A aplicação disponibiliza os seguintes endpoints:
 }
 ```
 
-### DTOs 
+### DTOs
 
 Foram implementados os seguintes DTOs:
 
@@ -191,7 +189,7 @@ Esta seção documenta algumas decisões tomadas durante o desenvolvimento, expl
 
 - **Responsabilidade do estoque no Product:** as operações de adição e remoção de estoque ficam na própria classe `Product`, pois o produto é responsável por controlar sua quantidade disponível.
 
-- **Registro do preço no OrderItem:** o preço unitário é armazenado no momento da criação do item, em vez de ser consultado continuamente no produto. Dessa forma, alterações futuras no preço de um produto não modificam o valor de pedidos já criados.
+- **Registro do preço no OrderItem:** o preço unitário é armazenado no momento da criação do item. Dessa forma, alterações futuras no preço de um produto não modificam o valor de pedidos já criados.
 
 - **Encapsulamento das coleções:** a lista de itens do pedido é mantida internamente, e o getter retorna uma cópia não modificável. Isso evita alterações externas diretas na coleção.
 
@@ -243,14 +241,67 @@ Esta seção documenta algumas decisões tomadas durante o desenvolvimento, expl
 
 - **Service como coordenador do processamento:** `OrderService` é responsável por transformar os dados da requisição em objetos do domínio e iniciar a cadeia de handlers.
 
-- **Catálogo temporário em memória:** `ProductCatalog` utiliza um `HashMap` para armazenar e consultar produtos por ID. Essa solução foi adotada temporariamente para permitir a implementação da API antes da persistência com banco de dados.
-
-- **Inicialização de produtos de demonstração:** `ProductCatalogInitializer` implementa `CommandLineRunner` para cadastrar produtos automaticamente quando a aplicação inicia.
-
 - **Tratamento global de exceções:** `GlobalExceptionHandler`, utilizando `@RestControllerAdvice` e `@ExceptionHandler`, centraliza a conversão de exceções em respostas HTTP.
 
-- **Exceção específica para produto inexistente:** `ProductNotFoundException` representa a tentativa de consultar um produto que não existe no catálogo, resultando em HTTP 404.
+- **Exceção específica para produto inexistente:** `ProductNotFoundException` representa a tentativa de consultar um produto que não existe no banco de dados, resultando em HTTP 404.
 
 - **Separação entre rejeições de negócio e exceções:** rejeições normais do processamento, como pagamento recusado ou estoque insuficiente identificado durante a validação, são representadas pelo status `REJECTED` e retornadas com HTTP 422. Exceções são utilizadas para situações excepcionais que interrompem o fluxo normal.
 
 - **Status HTTP conforme o resultado:** pedidos confirmados retornam HTTP 201; pedidos rejeitados por regras de negócio retornam HTTP 422; recursos inexistentes retornam HTTP 404.
+
+### Persistência com JPA e PostgreSQL
+
+- **Persistência relacional:** PostgreSQL foi introduzido como banco de dados da aplicação, substituindo o catálogo temporário em memória.
+
+- **Spring Data JPA:** os repositórios `ProductRepository` e `OrderRepository` estendem `JpaRepository`, disponibilizando operações de persistência e consulta sem necessidade de implementar manualmente as operações básicas.
+
+- **Mapeamento das entidades:** `Product`, `Order`, `OrderItem` e `Payment` foram configuradas como entidades JPA utilizando `@Entity`, `@Table`, `@Id` e `@GeneratedValue`.
+
+- **Relacionamento entre pedido e itens:** `Order` utiliza `@OneToMany` e `OrderItem` utiliza `@ManyToOne`. Um pedido pode possuir vários itens, enquanto cada item pertence a um único pedido.
+
+- **Relacionamento entre pedido e pagamento:** foi utilizado `@OneToOne` entre `Order` e `Payment`. A chave estrangeira `payment_id` fica na tabela `orders`.
+
+- **Pagamento opcional:** a associação com `Payment` permite valor nulo, pois um pedido pode ser rejeitado por falta de estoque antes de chegar à etapa de pagamento.
+
+- **Cascade Persist:** a persistência do pedido propaga a persistência dos seus itens e do pagamento associado, quando existente. O relacionamento com `Product` não propaga a persistência, pois produtos são entidades independentes e compartilhadas.
+
+- **Orphan Removal:** `orphanRemoval = true` no relacionamento entre `Order` e `OrderItem` permite remover do banco os itens que deixam de pertencer ao pedido.
+
+- **Transações com @Transactional:** o método `receberPedido()` do `OrderService` utiliza `@Transactional` para manter o processamento do pedido dentro de uma única transação, abrangendo consultas, regras de negócio, atualização do estoque e persistência.
+
+- **Dirty Checking:** alterações realizadas em entidades gerenciadas pelo contexto de persistência, como a redução do estoque de um produto, são detectadas pelo Hibernate e sincronizadas com o banco durante a transação, sem necessidade de executar `save()` explicitamente para cada alteração.
+
+- **Rollback:** exceções que provocam rollback dentro da transação desfazem as alterações realizadas no banco durante aquela operação, preservando a consistência dos dados.
+
+- **Persistência de pedidos rejeitados:** rejeições normais de negócio não provocam rollback automaticamente. Dessa forma, pedidos rejeitados podem ser persistidos para manter o histórico do processamento.
+
+- **Inicialização de produtos de demonstração:** `ProductCatalogInitializer` implementa `CommandLineRunner` para cadastrar produtos automaticamente no PostgreSQL quando o banco ainda não possui produtos.
+
+- **Configuração do Hibernate:** `spring.jpa.hibernate.ddl-auto=update` foi utilizada durante o desenvolvimento para atualizar a estrutura do banco conforme os mapeamentos das entidades.
+
+## Progresso
+
+🚧 Em desenvolvimento.
+
+| Etapa | Descrição | Status |
+|---|---|---|
+| 1 | Fundamentos e definição do domínio | Concluída |
+| 2 | Modelagem das classes Java | Concluída |
+| 3 | Implementação do Chain of Responsibility | Concluída |
+| 4 | Regras de negócio | Concluída |
+| 5 | API REST com Spring Boot | Concluída |
+| 6 | Persistência com JPA e PostgreSQL | Concluída |
+| 7 | Testes e qualidade de código | Pendente |
+| 8 | Finalização e preparação para portfólio | Pendente |
+
+## Objetivo de aprendizado
+
+Este projeto faz parte dos estudos de Java e Spring Boot, com foco em:
+
+- Compreender profundamente o padrão Chain of Responsibility.
+- Aplicar princípios SOLID e boas práticas de orientação a objetos.
+- Desenvolver uma API REST.
+- Trabalhar com persistência de dados utilizando JPA e PostgreSQL.
+- Compreender transações, Dirty Checking e rollback.
+- Escrever testes automatizados.
+- Desenvolver autonomia na construção e evolução de projetos de software.

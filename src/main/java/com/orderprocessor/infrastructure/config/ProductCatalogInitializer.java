@@ -6,23 +6,26 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import com.orderprocessor.domain.model.Product;
-import com.orderprocessor.infrastructure.catalog.ProductCatalog;
+import com.orderprocessor.infrastructure.repository.ProductRepository;
 
-@Component 
-public class ProductCatalogInitializer implements CommandLineRunner{
+@Component
+public class ProductCatalogInitializer implements CommandLineRunner {
 
-    private final ProductCatalog productCatalog;
+    private final ProductRepository productRepository;
 
-    @Override 
-    public void run(String... args) throws Exception{
-        Product produto1 = new Product("Notebook", BigDecimal.valueOf(3000), 10);
-        Product produto2 = new Product("Mouse", BigDecimal.valueOf(100), 20);
-        productCatalog.cadastrarProduto(1L, produto1);
-        productCatalog.cadastrarProduto(2L, produto2);
+    @Override
+    public void run(String... args) throws Exception {
+        if (productRepository.count() == 0) {
+            Product produto1 = new Product("Notebook", BigDecimal.valueOf(3000), 10);
+            Product produto2 = new Product("Mouse", BigDecimal.valueOf(100), 20);
+            productRepository.save(produto1);
+            productRepository.save(produto2);
+        }
+
     }
 
-    public ProductCatalogInitializer(ProductCatalog productCatalog){
-        this.productCatalog = productCatalog;
+    public ProductCatalogInitializer(ProductRepository productRepository) {
+        this.productRepository = productRepository;
     }
-    
+
 }
