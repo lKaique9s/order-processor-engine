@@ -17,9 +17,9 @@ O projeto será desenvolvido incrementalmente, priorizando a compreensão dos co
 ### Base do projeto
 
 - Java 21
-- Spring Boot
-- Spring Web
-- Bean Validation
+- Spring Boot 4.1.2
+- Spring Web MVC
+- Jakarta Bean Validation
 - Maven
 
 ### Tecnologias planejadas
@@ -33,19 +33,20 @@ O projeto será desenvolvido incrementalmente, priorizando a compreensão dos co
 
 As tecnologias serão introduzidas conforme a necessidade de cada etapa do desenvolvimento.
 
-## Funcionalidades planejadas
+## Funcionalidades
 
-- Cadastro e consulta de produtos.
-- Criação e consulta de pedidos.
-- Validação dos dados dos pedidos.
-- Verificação da existência dos produtos.
-- Verificação e controle de estoque.
-- Aplicação de descontos.
-- Cálculo de frete.
-- Simulação de pagamento.
-- Confirmação ou rejeição de pedidos.
-- Persistência dos dados.
-- Testes automatizados.
+- [x] Consulta de produtos.
+- [x] Criação e processamento de pedidos via API REST.
+- [x] Validação dos dados dos pedidos.
+- [x] Verificação da existência dos produtos.
+- [x] Verificação e controle de estoque.
+- [x] Aplicação de descontos.
+- [x] Cálculo de frete.
+- [x] Simulação de pagamento.
+- [x] Confirmação ou rejeição de pedidos.
+- [ ] Consulta de pedidos.
+- [ ] Persistência dos dados.
+- [ ] Testes automatizados.
 
 ## Design Pattern
 
@@ -59,11 +60,27 @@ O processamento de um pedido será organizado em uma cadeia de handlers independ
 
 A estrutura permitirá adicionar, remover ou reorganizar etapas com menor acoplamento entre as responsabilidades.
 
+### Cadeia de processamento
+
+A sequência atual de handlers é:
+
+1. `OrderValidationHandler`: valida os dados principais do pedido e inicia seu processamento.
+2. `ProductValidationHandler`: verifica os dados dos produtos e dos itens.
+3. `StockValidationHandler`: verifica a disponibilidade de estoque.
+4. `DiscountHandler`: calcula e aplica o desconto.
+5. `ShippingHandler`: calcula o frete.
+6. `PaymentHandler`: simula o processamento do pagamento.
+7. `OrderConfirmationHandler`: revalida o estoque, realiza a baixa e confirma o pedido.
+
+A cadeia é montada pela classe `OrderProcessingChain`, que conecta os handlers na ordem definida.
+
 ## Organização e arquitetura
 
-O projeto seguirá uma organização baseada na separação de responsabilidades, utilizando conceitos de orientação a objetos e princípios SOLID.
+O projeto segue uma organização baseada na separação de responsabilidades, utilizando conceitos de orientação a objetos e princípios SOLID.
 
-A modelagem inicial do domínio contempla:
+### Modelagem do domínio
+
+A modelagem inicial contempla:
 
 - `Product`: representa um produto e controla suas operações de estoque.
 - `OrderItem`: representa um produto dentro de um pedido, registrando quantidade e preço unitário.
@@ -73,7 +90,98 @@ A modelagem inicial do domínio contempla:
 - `PaymentMethod`: define os métodos de pagamento disponíveis.
 - `PaymentStatus`: representa o estado do pagamento.
 
+### Organização das camadas
+
+A partir da implementação da API REST, foram introduzidas as seguintes camadas:
+
+- `controller`: recebe requisições HTTP e define as respostas da API.
+- `application.dto`: contém os objetos de transferência de dados utilizados nas requisições e respostas.
+- `application.service`: coordena os casos de uso da aplicação.
+- `domain`: concentra as entidades, regras de negócio, handlers e exceções do domínio.
+- `infrastructure`: contém componentes de infraestrutura, como o catálogo temporário de produtos.
+
 A arquitetura será evoluída gradualmente conforme novas funcionalidades forem implementadas.
+
+## API REST
+
+A aplicação disponibiliza os seguintes endpoints:
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| GET | `/api/orders` | Verifica se a API está funcionando. |
+| POST | `/api/orders` | Recebe e processa um pedido. |
+| GET | `/api/products/{id}` | Consulta um produto pelo ID. |
+
+### Exemplo de criação de pedido
+
+**Requisição**
+
+`POST /api/orders`
+
+```json
+{
+  "customerName": "João",
+  "paymentMethod": "PIX",
+  "items": [
+    {
+      "productId": 1,
+      "quantity": 2
+    },
+    {
+      "productId": 2,
+      "quantity": 1
+    }
+  ]
+}
+```
+
+**Exemplo de resposta**
+
+```json
+{
+  "customerName": "João",
+  "discountAmount": 610.00,
+  "finalAmount": 5490.00,
+  "items": [
+    {
+      "productName": "Notebook",
+      "quantity": 2,
+      "subtotal": 6000,
+      "unitPrice": 3000
+    },
+    {
+      "productName": "Mouse",
+      "quantity": 1,
+      "subtotal": 100,
+      "unitPrice": 100
+    }
+  ],
+  "paymentMethod": "PIX",
+  "shippingAmount": 0.00,
+  "status": "CONFIRMED",
+  "totalAmount": 6100
+}
+```
+
+### DTOs 
+
+Foram implementados os seguintes DTOs:
+
+- `CreateOrderRequest`: define os dados aceitos para criação de um pedido.
+- `CreateOrderItemRequest`: define o produto e a quantidade de cada item.
+- `OrderResponse`: define as informações retornadas após o processamento.
+- `OrderItemResponse`: representa os itens presentes na resposta.
+
+A separação entre DTOs e entidades evita expor diretamente os objetos internos do domínio e permite controlar quais informações entram e saem da API.
+
+### Respostas HTTP
+
+| Status | Descrição | Exemplo |
+|---|---|---|
+| 201 Created | Pedido criado e confirmado. | Processamento concluído com sucesso. |
+| 400 Bad Request | Requisição inválida. | Falha na validação dos dados de entrada. |
+| 404 Not Found | Recurso não encontrado. | Produto inexistente no catálogo. |
+| 422 Unprocessable Content | Pedido rejeitado por uma regra de negócio. | Pagamento recusado ou estoque insuficiente. |
 
 ## Decisões técnicas
 
@@ -101,13 +209,13 @@ Esta seção documenta algumas decisões tomadas durante o desenvolvimento, expl
 
 ### Regras de negócio
 
-- **Limite de cheque de estoque antes da baixa:** o estoque é verificado antes do pagamento, mas só é efetivamente reduzido depois da aprovação. Assim, pedidos com pagamento rejeitado não alteram o estoque.
+- **Verificação de estoque antes da baixa:** o estoque é verificado antes do pagamento, mas só é efetivamente reduzido depois da aprovação. Assim, pedidos com pagamento rejeitado não alteram o estoque.
 
 - **Revalidação de estoque na confirmação:** o estoque é verificado novamente antes da baixa. Isso reduz o risco de utilizar informações desatualizadas da verificação anterior.
 
 - **Validação antes da alteração:** a baixa de estoque utiliza dois loops: primeiro verifica se todos os produtos possuem quantidade suficiente; depois realiza as remoções. Isso evita baixas parciais em caso de estoque insuficiente no cenário sequencial.
 
-- **Exceção específica para falta de estoque:** `NoStockQuantityException` representa uma situação de negócio específica, permitindo distinguir a falta de estoque de outras falhas de processamento.
+- **Exceção específica para falta de estoque:** `NoStockQuantityException` representa uma situação específica de falta de estoque, permitindo distingui-la de outras falhas de processamento.
 
 - **Criação do pagamento no PaymentHandler:** o objeto `Payment` só é criado quando o pedido chega à etapa de pagamento, evitando representar um pagamento antes de ele ser efetivamente processado.
 
@@ -125,28 +233,24 @@ Esta seção documenta algumas decisões tomadas durante o desenvolvimento, expl
 
 - **Arredondamento centralizado no domínio:** os valores de desconto e frete são arredondados para duas casas decimais nos respectivos setters, enquanto o valor final é arredondado no cálculo do pedido. Isso centraliza a regra de precisão monetária na classe `Order`.
 
-## Progresso
+### API REST e Spring Boot
 
-🚧 Em desenvolvimento.
+- **Injeção de dependência:** os componentes gerenciados pelo Spring são fornecidos por injeção de dependência, evitando que as dependências da aplicação sejam instanciadas manualmente em diferentes classes.
 
-| Etapa | Descrição | Status |
-|---|---|---|
-| 1 | Fundamentos e definição do domínio | Concluída |
-| 2 | Modelagem das classes Java | Concluída |
-| 3 | Implementação do Chain of Responsibility | Concluída |
-| 4 | Regras de negócio | Concluída |
-| 5 | API REST com Spring Boot | Pendente |
-| 6 | Persistência com JPA e PostgreSQL | Pendente |
-| 7 | Testes e qualidade de código | Pendente |
-| 8 | Finalização e preparação para portfólio | Pendente |
+- **Separação entre DTOs e entidades:** `CreateOrderRequest` define os dados aceitos pela API, enquanto `OrderResponse` define os dados retornados. Isso evita expor diretamente a entidade `Order` e permite controlar a comunicação com os clientes.
 
-## Objetivo de aprendizado
+- **Validação na entrada da API:** `@Valid` e as anotações do Jakarta Bean Validation verificam os dados recebidos antes da execução do serviço.
 
-Este projeto faz parte dos estudos de Java e Spring Boot, com foco em:
+- **Service como coordenador do processamento:** `OrderService` é responsável por transformar os dados da requisição em objetos do domínio e iniciar a cadeia de handlers.
 
-- Compreender profundamente o padrão Chain of Responsibility.
-- Aplicar princípios SOLID e boas práticas de orientação a objetos.
-- Desenvolver uma API REST.
-- Trabalhar com persistência de dados.
-- Escrever testes automatizados.
-- Desenvolver autonomia na construção e evolução de projetos de software.
+- **Catálogo temporário em memória:** `ProductCatalog` utiliza um `HashMap` para armazenar e consultar produtos por ID. Essa solução foi adotada temporariamente para permitir a implementação da API antes da persistência com banco de dados.
+
+- **Inicialização de produtos de demonstração:** `ProductCatalogInitializer` implementa `CommandLineRunner` para cadastrar produtos automaticamente quando a aplicação inicia.
+
+- **Tratamento global de exceções:** `GlobalExceptionHandler`, utilizando `@RestControllerAdvice` e `@ExceptionHandler`, centraliza a conversão de exceções em respostas HTTP.
+
+- **Exceção específica para produto inexistente:** `ProductNotFoundException` representa a tentativa de consultar um produto que não existe no catálogo, resultando em HTTP 404.
+
+- **Separação entre rejeições de negócio e exceções:** rejeições normais do processamento, como pagamento recusado ou estoque insuficiente identificado durante a validação, são representadas pelo status `REJECTED` e retornadas com HTTP 422. Exceções são utilizadas para situações excepcionais que interrompem o fluxo normal.
+
+- **Status HTTP conforme o resultado:** pedidos confirmados retornam HTTP 201; pedidos rejeitados por regras de negócio retornam HTTP 422; recursos inexistentes retornam HTTP 404.

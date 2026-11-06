@@ -1,5 +1,8 @@
 package com.orderprocessor.domain.handler;
 
+import org.springframework.stereotype.Component;
+
+@Component 
 public class OrderProcessingChain {
     private OrderValidationHandler orderValidationHandler = new OrderValidationHandler();
     private ProductValidationHandler productValidationHandler = new ProductValidationHandler();
