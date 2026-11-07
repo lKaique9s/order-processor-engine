@@ -24,6 +24,8 @@ O projeto é desenvolvido incrementalmente, priorizando a compreensão dos conce
 - PostgreSQL
 - Jakarta Bean Validation
 - Maven
+- JUnit 5
+- Mockito
 
 ### Planejadas
 
@@ -46,7 +48,7 @@ O projeto é desenvolvido incrementalmente, priorizando a compreensão dos conce
 - [x] Persistência de produtos, pedidos, itens e pagamentos.
 - [x] Persistência de pedidos rejeitados.
 - [ ] Consulta de pedidos.
-- [ ] Testes automatizados.
+- [x] Testes automatizados (testes unitários com JUnit 5 e Mockito).
 
 ## Design Pattern
 
@@ -279,6 +281,39 @@ Esta seção documenta algumas decisões tomadas durante o desenvolvimento, expl
 
 - **Configuração do Hibernate:** `spring.jpa.hibernate.ddl-auto=update` foi utilizada durante o desenvolvimento para atualizar a estrutura do banco conforme os mapeamentos das entidades.
 
+### Testes e qualidade de código
+
+- **Estratégia de testes unitários isolados:** os handlers da cadeia (`OrderValidationHandler`, `ProductValidationHandler`, `StockValidationHandler`, `DiscountHandler`, `ShippingHandler`, `PaymentHandler` e `OrderConfirmationHandler`) são testados de forma unitária, sem inicializar o contexto do Spring ou banco de dados relacional. Isso garante testes rápidos, determinísticos e de fácil manutenção.
+
+- **Uso de Mockito na camada de serviço:** em `OrderServiceTest`, as dependências (`ProductRepository`, `OrderRepository` e `OrderProcessingChain`) são simuladas via `mock()`, permitindo validar de forma isolada a orquestração do caso de uso, como a criação dos itens do pedido, o lançamento de `ProductNotFoundException`, o salvamento no repositório e a execução da cadeia mesmo quando o pedido é rejeitado.
+
+- **Validação do encadeamento da Chain:** foi utilizado mock do próximo handler (`setNextHandler`) para garantir que os handlers repassam a execução adiante quando as condições de processamento são satisfeitas.
+
+- **Testes de limites (Boundary Testing):** regras de negócio que envolvem faixas de valores foram amplamente cobertas em seus limites exatos:
+  - **Frete:** faixas de até R$ 100,00 (R$ 20,00), de R$ 100,01 a R$ 500,00 (R$ 15,00) e acima de R$ 500,00 (frete grátis).
+  - **Descontos:** pedidos de até R$ 500,00 (3%) e acima de R$ 500,00 (10%).
+  - **Pagamentos com cartão de crédito:** limite de R$ 5.000,00 (aprovado) e acima de R$ 5.000,00 (rejeitado).
+
+- **Revalidação e consistência de estoque na confirmação:** testes unitários cobrem cenários com estoque suficiente, estoque exato e estoque insuficiente. Além disso, foi validada a atomicidade lógica em `OrderConfirmationHandler`: caso um dos itens da lista não possua estoque, a operação é rejeitada e nenhum dos itens anteriores tem seu estoque debitado.
+
+- **Ajuste de tratamento na confirmação do pedido:** na etapa de confirmação, pedidos com pagamento não aprovado ou estoque insuficiente transicionam para o estado `REJECTED` via `order.reject()` e retornam `false`, garantindo que o status seja registrado e persistido de maneira consistente em vez de abortar o fluxo abruptamente.
+
+- **Validações defensivas:** testes cobrem casos de entradas nulas (`null`), campos de texto em branco ou contendo apenas espaços, e coleções de itens vazias.
+
+## Execução dos testes
+
+Para executar a suíte completa de testes automatizados com o Maven Wrapper:
+
+```bash
+./mvnw test
+```
+
+No Windows (PowerShell / Prompt de Comando):
+
+```powershell
+.\mvnw.cmd test
+```
+
 ## Progresso
 
 🚧 Em desenvolvimento.
@@ -291,7 +326,7 @@ Esta seção documenta algumas decisões tomadas durante o desenvolvimento, expl
 | 4 | Regras de negócio | Concluída |
 | 5 | API REST com Spring Boot | Concluída |
 | 6 | Persistência com JPA e PostgreSQL | Concluída |
-| 7 | Testes e qualidade de código | Pendente |
+| 7 | Testes e qualidade de código | Concluída |
 | 8 | Finalização e preparação para portfólio | Pendente |
 
 ## Objetivo de aprendizado
