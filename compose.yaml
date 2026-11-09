@@ -1,0 +1,36 @@
+
+services:
+  postgre:
+    image: postgres:18
+    container_name: order_processor
+    environment:
+      POSTGRES_DB: order_processor_db
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d order_processor_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  app:
+    build: .
+    container_name: order_processor_app
+    environment:
+      DB_HOST: postgre
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgre:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
