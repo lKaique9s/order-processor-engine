@@ -8,11 +8,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.orderprocessor.application.dto.CreateOrderRequest;
 import com.orderprocessor.application.dto.OrderResponse;
+import com.orderprocessor.domain.exception.InvalidOrderException;
 import com.orderprocessor.domain.exception.ProductNotFoundException;
 import com.orderprocessor.domain.handler.OrderHandler;
 import com.orderprocessor.domain.handler.OrderProcessingChain;
 import com.orderprocessor.domain.model.Order;
 import com.orderprocessor.domain.model.OrderItem;
+import com.orderprocessor.domain.model.OrderStatus;
 import com.orderprocessor.infrastructure.repository.OrderRepository;
 import com.orderprocessor.infrastructure.repository.ProductRepository;
 
@@ -30,6 +32,11 @@ public class OrderService {
     }
 
     public List<OrderItem> criarOrderItem(CreateOrderRequest createOrderRequest) {
+        if (createOrderRequest == null
+                || createOrderRequest.getItems() == null
+                || createOrderRequest.getItems().isEmpty()) {
+            throw new InvalidOrderException();
+        }
         var items = List.copyOf(createOrderRequest.getItems());
         List<OrderItem> listOrderItems = new ArrayList<>();
 
@@ -50,7 +57,11 @@ public class OrderService {
 
     public OrderResponse processarPedido(Order order) {
         OrderHandler primeiroHandler = orderProcessingChain.getPrimeiroHandler();
-        primeiroHandler.processar(order);
+        boolean processado = primeiroHandler.processar(order);
+
+        if (!processado && order.getStatus() == OrderStatus.PROCESSING)
+            order.reject();
+
         orderRepository.save(order);
         return new OrderResponse(order);
     }

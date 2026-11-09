@@ -1,7 +1,9 @@
 package com.orderprocessor.domain.handler;
 
+import org.springframework.stereotype.Component;
 import com.orderprocessor.domain.model.Order;
 
+@Component 
 public class StockValidationHandler implements OrderHandler {
     private OrderHandler nextHandler;
 

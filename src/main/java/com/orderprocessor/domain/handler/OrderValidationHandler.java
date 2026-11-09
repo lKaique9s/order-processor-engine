@@ -1,7 +1,11 @@
 package com.orderprocessor.domain.handler;
 
+import org.springframework.stereotype.Component;
+
+import com.orderprocessor.domain.exception.InvalidOrderException;
 import com.orderprocessor.domain.model.Order;
 
+@Component 
 public class OrderValidationHandler implements OrderHandler {
     private OrderHandler nextHandler;
 
@@ -13,7 +17,7 @@ public class OrderValidationHandler implements OrderHandler {
                 || order.getCustomerName().isBlank()
                 || order.getItems() == null
                 || order.getItems().isEmpty())
-            return false;
+            throw new InvalidOrderException();
 
         order.process();
 

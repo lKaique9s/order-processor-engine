@@ -2,8 +2,11 @@ package com.orderprocessor.domain.handler;
 
 import java.math.BigDecimal;
 
+import org.springframework.stereotype.Component;
+
 import com.orderprocessor.domain.model.Order;
 
+@Component 
 public class DiscountHandler implements OrderHandler {
     private OrderHandler nextHandler;
 

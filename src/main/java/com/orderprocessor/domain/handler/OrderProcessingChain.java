@@ -2,18 +2,31 @@ package com.orderprocessor.domain.handler;
 
 import org.springframework.stereotype.Component;
 
-@Component 
+@Component
 public class OrderProcessingChain {
-    private OrderValidationHandler orderValidationHandler = new OrderValidationHandler();
-    private ProductValidationHandler productValidationHandler = new ProductValidationHandler();
-    private StockValidationHandler stockValidationHandler = new StockValidationHandler();
-    private DiscountHandler discountHandler = new DiscountHandler();
-    private ShippingHandler shippingHandler = new ShippingHandler();
-    private PaymentHandler paymentHandler = new PaymentHandler();
-    private OrderConfirmationHandler orderConfirmationHandler = new OrderConfirmationHandler();
+    private final OrderValidationHandler orderValidationHandler;
+    private final ProductValidationHandler productValidationHandler;
+    private final StockValidationHandler stockValidationHandler;
+    private final DiscountHandler discountHandler;
+    private final ShippingHandler shippingHandler;
+    private final PaymentHandler paymentHandler;
+    private final OrderConfirmationHandler orderConfirmationHandler;
 
-
-    public OrderProcessingChain(){
+    public OrderProcessingChain(
+            OrderValidationHandler orderValidationHandler,
+            ProductValidationHandler productValidationHandler,
+            StockValidationHandler stockValidationHandler,
+            DiscountHandler discountHandler,
+            ShippingHandler shippingHandler,
+            PaymentHandler paymentHandler,
+            OrderConfirmationHandler orderConfirmationHandler) {
+        this.orderValidationHandler = orderValidationHandler;
+        this.productValidationHandler = productValidationHandler;
+        this.stockValidationHandler = stockValidationHandler;
+        this.discountHandler = discountHandler;
+        this.shippingHandler = shippingHandler;
+        this.paymentHandler = paymentHandler;
+        this.orderConfirmationHandler = orderConfirmationHandler;
         orderValidationHandler.setNextHandler(productValidationHandler);
         productValidationHandler.setNextHandler(stockValidationHandler);
         stockValidationHandler.setNextHandler(discountHandler);
@@ -22,7 +35,7 @@ public class OrderProcessingChain {
         paymentHandler.setNextHandler(orderConfirmationHandler);
     }
 
-    public OrderHandler getPrimeiroHandler(){
+    public OrderHandler getPrimeiroHandler() {
         return orderValidationHandler;
     }
 }

@@ -10,6 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 @Entity 
 @Table (name = "products")
@@ -24,6 +25,9 @@ public class Product {
     private BigDecimal price;
     @Column (name= "stock_quantity", nullable = false)
     private int stockQuantity;
+    @Version 
+    @Column (nullable = false)
+    private Long version;
 
     protected Product(){}
 

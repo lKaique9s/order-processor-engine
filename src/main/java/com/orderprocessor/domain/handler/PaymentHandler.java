@@ -2,11 +2,14 @@ package com.orderprocessor.domain.handler;
 
 import java.math.BigDecimal;
 
+import org.springframework.stereotype.Component;
+
 import com.orderprocessor.domain.model.Order;
 import com.orderprocessor.domain.model.Payment;
 import com.orderprocessor.domain.model.PaymentMethod;
 import com.orderprocessor.domain.model.PaymentStatus;
 
+@Component 
 public class PaymentHandler implements OrderHandler {
     private OrderHandler nextHandler;
 

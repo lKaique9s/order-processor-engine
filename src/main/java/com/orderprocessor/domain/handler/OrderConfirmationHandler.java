@@ -1,9 +1,12 @@
 package com.orderprocessor.domain.handler;
 
+import org.springframework.stereotype.Component;
+
 import com.orderprocessor.domain.model.Order;
 import com.orderprocessor.domain.model.OrderStatus;
 import com.orderprocessor.domain.model.PaymentStatus;
 
+@Component 
 public class OrderConfirmationHandler implements OrderHandler {
     private OrderHandler nextHandler;
 
