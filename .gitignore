@@ -31,4 +31,18 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Environment files ###
 .env
+.env.*
+!.env.example
+
+### Postman ###
+.postman/
+
+### Logs ###
+*.log
+
+### OS artifacts ###
+.DS_Store
+Thumbs.db
