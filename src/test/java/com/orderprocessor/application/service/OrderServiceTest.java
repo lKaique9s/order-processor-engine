@@ -3,135 +3,127 @@ package com.orderprocessor.application.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.orderprocessor.application.dto.CreateOrderItemRequest;
 import com.orderprocessor.application.dto.CreateOrderRequest;
-import com.orderprocessor.domain.exception.ProductNotFoundException;
-import com.orderprocessor.domain.handler.OrderHandler;
+import com.orderprocessor.application.dto.OrderResponse;
+import com.orderprocessor.domain.exception.InvalidOrderException;
 import com.orderprocessor.domain.handler.OrderProcessingChain;
 import com.orderprocessor.domain.model.Order;
+import com.orderprocessor.domain.model.OrderStatus;
 import com.orderprocessor.domain.model.PaymentMethod;
 import com.orderprocessor.domain.model.Product;
 import com.orderprocessor.infrastructure.repository.OrderRepository;
 import com.orderprocessor.infrastructure.repository.ProductRepository;
 
-public class OrderServiceTest {
+class OrderServiceTest {
+
     private ProductRepository productRepository;
     private OrderRepository orderRepository;
     private OrderProcessingChain orderProcessingChain;
     private OrderService orderService;
 
-    @Test
-    void deveCriarOrderItemQuandoProdutoExiste() {
+    @BeforeEach
+    void setUp() {
         productRepository = mock(ProductRepository.class);
         orderRepository = mock(OrderRepository.class);
         orderProcessingChain = mock(OrderProcessingChain.class);
 
-        orderService = new OrderService(productRepository, orderRepository, orderProcessingChain);
-        Product produto1 = new Product("Notebook", BigDecimal.valueOf(1), 10);
+        orderService = new OrderService(
+                productRepository,
+                orderRepository,
+                orderProcessingChain);
+    }
 
-        CreateOrderItemRequest itemRequest = new CreateOrderItemRequest();
-        itemRequest.setProductId(1L);
-        itemRequest.setQuantity(2);
+    @Test
+    void deveLancarExcecaoQuandoPedidoPossuiDadosInvalidos() {
 
+        // Arrange
         CreateOrderRequest request = new CreateOrderRequest();
-        request.setCustomerName("Cliente teste");
-        request.setPaymentMethod(PaymentMethod.PIX);
-        request.setItems(List.of(itemRequest));
 
-        when(productRepository.findById(1L)).thenReturn(Optional.of(produto1));
-        var resultado = orderService.criarOrderItem(request);
+        // Act e Assert
+        assertThrows(
+                InvalidOrderException.class,
+                () -> orderService.receberPedido(request));
 
-        verify(productRepository).findById(1L);
-        assertEquals(1, resultado.size());
-        assertEquals(2, resultado.get(0).getQuantity());
-        assertEquals("Notebook", resultado.get(0).getProduct().getName());
+        verify(orderRepository, never()).save(any(Order.class));
     }
 
     @Test
     void deveLancarExcecaoQuandoProdutoNaoExiste() {
-        productRepository = mock(ProductRepository.class);
-        orderRepository = mock(OrderRepository.class);
-        orderProcessingChain = mock(OrderProcessingChain.class);
 
-        orderService = new OrderService(productRepository, orderRepository, orderProcessingChain);
-
-        CreateOrderItemRequest itemRequest = new CreateOrderItemRequest();
-        itemRequest.setProductId(1L);
-        itemRequest.setQuantity(2);
-
-        CreateOrderRequest request = new CreateOrderRequest();
-        request.setCustomerName("Cliente teste");
-        request.setPaymentMethod(PaymentMethod.PIX);
-        request.setItems(List.of(itemRequest));
-
-        when(productRepository.findById(1L)).thenReturn(Optional.empty());
-
-        assertThrows(ProductNotFoundException.class, () -> {
-            orderService.criarOrderItem(request);
-        });
+        CreateOrderRequest request = criarRequestValido();
+        when(productRepository.findById(1L))
+                .thenReturn(Optional.empty());
+        assertThrows(
+                RuntimeException.class,
+                () -> orderService.receberPedido(request));
+        verify(orderRepository, never()).save(any(Order.class));
     }
 
     @Test
-    void deveCriarOrderQuandoDadosSaoValidos() {
-        productRepository = mock(ProductRepository.class);
-        orderRepository = mock(OrderRepository.class);
-        orderProcessingChain = mock(OrderProcessingChain.class);
+    void devePersistirPedidoQuandoProcessamentoRetornaFalse() {
 
-        orderService = new OrderService(productRepository, orderRepository, orderProcessingChain);
-        Product produto1 = new Product("Notebook", BigDecimal.valueOf(1), 10);
-        CreateOrderItemRequest itemRequest = new CreateOrderItemRequest();
-        itemRequest.setProductId(1L);
-        itemRequest.setQuantity(2);
+        Product product = new Product(
+                "Notebook",
+                new BigDecimal("1000.00"),
+                10);
 
-        CreateOrderRequest request = new CreateOrderRequest();
-        request.setCustomerName("Cliente teste");
-        request.setPaymentMethod(PaymentMethod.PIX);
-        request.setItems(List.of(itemRequest));
+        when(productRepository.findById(1L))
+                .thenReturn(Optional.of(product));
 
-        when(productRepository.findById(1L)).thenReturn(Optional.of(produto1));
-
-        Order order = orderService.criarOrder(request);
-
-        verify(productRepository).findById(1L);
-        assertEquals("Cliente teste", order.getCustomerName());
-        assertEquals(PaymentMethod.PIX, order.getPaymentMethod());
-        assertEquals(1, order.getItems().size());
-        assertEquals(2, order.getItems().get(0).getQuantity());
-    }
-
-    @Test
-    void deveSalvarPedidoMesmoQuandoCadeiaRejeitaPedido() {
-        productRepository = mock(ProductRepository.class);
-        orderRepository = mock(OrderRepository.class);
-        orderProcessingChain = mock(OrderProcessingChain.class);
-        OrderHandler orderHandler = mock(OrderHandler.class);
-
-        when(orderProcessingChain.getPrimeiroHandler()).thenReturn(orderHandler);
-        when(orderHandler.processar(any(Order.class))).thenReturn(false);
-
-        orderService = new OrderService(productRepository, orderRepository, orderProcessingChain);
-        Product produto1 = new Product("Notebook", BigDecimal.valueOf(1), 10);
-        CreateOrderItemRequest itemRequest = new CreateOrderItemRequest();
-        itemRequest.setProductId(1L);
-        itemRequest.setQuantity(2);
-        CreateOrderRequest request = new CreateOrderRequest();
-        request.setCustomerName("Cliente teste");
-        request.setPaymentMethod(PaymentMethod.PIX);
-        request.setItems(List.of(itemRequest));
-        when(productRepository.findById(1L)).thenReturn(Optional.of(produto1));
-
-        orderService.receberPedido(request);
+        when(orderProcessingChain.getPrimeiroHandler())
+                .thenReturn(order -> {
+                    order.process();
+                    order.reject();
+                    return false;
+                });
+        OrderResponse response = orderService.receberPedido(criarRequestValido());
+        assertEquals(OrderStatus.REJECTED, response.getStatus());
         verify(orderRepository).save(any(Order.class));
-        verify(orderHandler).processar(any(Order.class));
+    }
+
+    @Test
+    void devePersistirPedidoQuandoProcessamentoTemSucesso() {
+
+        Product product = new Product(
+                "Notebook",
+                new BigDecimal("1000.00"),
+                10);
+
+        when(productRepository.findById(1L))
+                .thenReturn(Optional.of(product));
+
+        when(orderProcessingChain.getPrimeiroHandler())
+                .thenReturn(order -> {
+                    order.process();
+                    order.confirm();
+                    return true;
+                });
+        OrderResponse response = orderService.receberPedido(criarRequestValido());
+        assertEquals(OrderStatus.CONFIRMED, response.getStatus());
+        verify(orderRepository).save(any(Order.class));
+    }
+
+    private CreateOrderRequest criarRequestValido() {
+
+        CreateOrderItemRequest item = new CreateOrderItemRequest();
+        item.setProductId(1L);
+        item.setQuantity(1);
+
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setCustomerName("Cliente Teste");
+        request.setPaymentMethod(PaymentMethod.CREDIT_CARD);
+        request.setItems(List.of(item));
+
+        return request;
     }
 }

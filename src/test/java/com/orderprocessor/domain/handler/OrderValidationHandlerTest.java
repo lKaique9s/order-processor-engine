@@ -1,7 +1,8 @@
 package com.orderprocessor.domain.handler;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import com.orderprocessor.domain.exception.InvalidOrderException;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -35,8 +36,9 @@ public class OrderValidationHandlerTest {
     @Test
     void pedidoNuloDeveSerRejeitado() {
         orderValidationHandler = new OrderValidationHandler();
-        boolean resultado = orderValidationHandler.processar(null);
-        assertFalse(resultado);
+        assertThrows(
+                InvalidOrderException.class,
+                () -> orderValidationHandler.processar(null));
     }
 
     @Test
@@ -49,8 +51,9 @@ public class OrderValidationHandlerTest {
         items.add(orderItem);
         Order order = new Order("", items, PaymentMethod.PIX);
 
-        boolean resultado = orderValidationHandler.processar(order);
-        assertFalse(resultado);
+        assertThrows(
+                InvalidOrderException.class,
+                () -> orderValidationHandler.processar(order));
     }
 
     @Test
@@ -63,8 +66,9 @@ public class OrderValidationHandlerTest {
         items.add(orderItem);
         Order order = new Order("        ", items, PaymentMethod.PIX);
 
-        boolean resultado = orderValidationHandler.processar(order);
-        assertFalse(resultado);
+        assertThrows(
+                InvalidOrderException.class,
+                () -> orderValidationHandler.processar(order));
     }
 
     @Test
@@ -74,7 +78,8 @@ public class OrderValidationHandlerTest {
         List<OrderItem> items = new ArrayList<>();
         Order order = new Order("Cliente Teste", items, PaymentMethod.PIX);
 
-        boolean resultado = orderValidationHandler.processar(order);
-        assertFalse(resultado);
+        assertThrows(
+                InvalidOrderException.class,
+                () -> orderValidationHandler.processar(order));
     }
 }
