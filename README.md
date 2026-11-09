@@ -1,116 +1,138 @@
 # Order Processor Engine
 
-API REST para processamento de pedidos, desenvolvida com Java e Spring Boot.
+API REST para processamento de pedidos de e-commerce, desenvolvida com
+**Java 21** e **Spring Boot**.
 
-Projeto de estudo focado na aplicação do padrão **Chain of Responsibility**, nos princípios de orientação a objetos e em boas práticas de arquitetura de software.
+Projeto de estudo com foco na aplicação do padrão **Chain of
+Responsibility**, em orientação a objetos, separação de
+responsabilidades, persistência relacional e testes automatizados.
 
 ## Objetivo
 
-Construir uma aplicação capaz de processar pedidos de e-commerce por meio de uma sequência de etapas independentes.
+Construir uma aplicação capaz de processar pedidos por meio de uma
+sequência de etapas independentes. Cada etapa é representada por um
+*handler*, responsável por executar uma operação específica e decidir se
+o pedido pode continuar no fluxo.
 
-Cada etapa será representada por um handler, responsável por executar uma operação específica e decidir se o pedido pode continuar sendo processado.
-
-O projeto é desenvolvido incrementalmente, priorizando a compreensão dos conceitos, a qualidade do código e a capacidade de tomar decisões de arquitetura.
+O projeto foi desenvolvido incrementalmente, priorizando a compreensão
+dos conceitos, a qualidade do código e a tomada de decisões de
+arquitetura.
 
 ## Tecnologias
 
-### Implementadas
-
-- Java 21
-- Spring Boot 4.1.2
-- Spring Web MVC
-- Spring Data JPA
-- Hibernate
-- PostgreSQL
-- Jakarta Bean Validation
-- Maven
-- JUnit 5
-- Mockito
-
-### Planejadas
-
-- JUnit
-- Mockito
-- Docker
-- Swagger / OpenAPI
+-   Java 21
+-   Spring Boot 4.1.2
+-   Spring Web MVC
+-   Spring Data JPA
+-   Hibernate
+-   PostgreSQL
+-   Jakarta Bean Validation
+-   Maven
+-   JUnit 5
+-   Mockito
+-   Docker e Docker Compose
+-   Swagger / OpenAPI
 
 ## Funcionalidades
 
-- [x] Consulta de produtos.
-- [x] Criação e processamento de pedidos via API REST.
-- [x] Validação dos dados dos pedidos.
-- [x] Verificação da existência dos produtos.
-- [x] Verificação e controle de estoque.
-- [x] Aplicação de descontos.
-- [x] Cálculo de frete.
-- [x] Simulação de pagamento.
-- [x] Confirmação ou rejeição de pedidos.
-- [x] Persistência de produtos, pedidos, itens e pagamentos.
-- [x] Persistência de pedidos rejeitados.
-- [ ] Consulta de pedidos.
-- [x] Testes automatizados (testes unitários com JUnit 5 e Mockito).
+-   Consulta de produtos por ID.
+-   Criação e processamento de pedidos via API REST.
+-   Validação dos dados recebidos.
+-   Verificação da existência dos produtos.
+-   Verificação e controle de estoque.
+-   Aplicação de descontos.
+-   Cálculo de frete.
+-   Simulação de pagamento.
+-   Confirmação ou rejeição de pedidos.
+-   Persistência de produtos, pedidos, itens e pagamentos.
+-   Persistência de pedidos rejeitados por regras de negócio.
+-   Tratamento global de exceções.
+-   Controle de concorrência otimista no estoque de produtos.
+-   Testes unitários e de integração.
 
-## Design Pattern
+> A consulta de pedidos ainda não está disponível. O endpoint
+> `GET /api/orders` é utilizado como verificação de funcionamento da
+> API.
+
+## Design Pattern: Chain of Responsibility
 
 O principal padrão de projeto utilizado é **Chain of Responsibility**.
 
-O processamento de um pedido é organizado em uma cadeia de handlers independentes. Cada handler possui uma responsabilidade específica e pode:
+O processamento é organizado em uma cadeia de handlers independentes.
+Cada handler possui uma responsabilidade específica e pode:
 
-- Executar sua etapa de processamento.
-- Encaminhar o pedido para o próximo handler.
-- Interromper o processamento quando uma condição impedir sua continuidade.
+-   Executar sua etapa de processamento.
+-   Encaminhar o pedido para o próximo handler.
+-   Interromper o processamento quando uma condição impedir sua
+    continuidade.
 
-A estrutura permite adicionar, remover ou reorganizar etapas com menor acoplamento entre as responsabilidades.
+Essa estrutura reduz o acoplamento entre as etapas e facilita a
+manutenção e a evolução do fluxo.
 
 ### Cadeia de processamento
 
-A sequência atual de handlers é:
+A sequência atual é:
 
-1. `OrderValidationHandler`: valida os dados principais do pedido e inicia seu processamento.
-2. `ProductValidationHandler`: verifica os dados dos produtos e dos itens.
-3. `StockValidationHandler`: verifica a disponibilidade de estoque.
-4. `DiscountHandler`: calcula e aplica o desconto.
-5. `ShippingHandler`: calcula o frete.
-6. `PaymentHandler`: simula o processamento do pagamento.
-7. `OrderConfirmationHandler`: revalida o estoque, realiza a baixa e confirma o pedido.
+1.  `OrderValidationHandler`: valida os dados principais do pedido e
+    inicia seu processamento.
+2.  `ProductValidationHandler`: verifica os dados dos produtos e dos
+    itens.
+3.  `StockValidationHandler`: verifica a disponibilidade de estoque.
+4.  `DiscountHandler`: calcula e aplica o desconto.
+5.  `ShippingHandler`: calcula o frete.
+6.  `PaymentHandler`: simula o processamento do pagamento.
+7.  `OrderConfirmationHandler`: revalida o estoque, realiza a baixa e
+    confirma o pedido.
 
-A cadeia é montada pela classe `OrderProcessingChain`, que conecta os handlers na ordem definida.
+A classe `OrderProcessingChain` conecta os handlers na ordem definida.
+Os handlers são componentes gerenciados pelo Spring e recebem suas
+dependências por injeção de dependência.
 
 ## Organização e arquitetura
 
-O projeto segue uma organização baseada na separação de responsabilidades, utilizando conceitos de orientação a objetos e princípios SOLID.
-
-### Modelagem do domínio
-
-A modelagem contempla:
-
-- `Product`: representa um produto e controla suas operações de estoque.
-- `OrderItem`: representa um produto dentro de um pedido, registrando quantidade e preço unitário.
-- `Order`: representa o pedido, seus itens, valores e estado atual.
-- `OrderStatus`: define os possíveis estados de um pedido.
-- `Payment`: representa o pagamento associado ao pedido.
-- `PaymentMethod`: define os métodos de pagamento disponíveis.
-- `PaymentStatus`: representa o estado do pagamento.
+O projeto utiliza separação de responsabilidades e conceitos de
+orientação a objetos e princípios SOLID.
 
 ### Organização das camadas
 
-A aplicação utiliza as seguintes camadas:
+-   `controller`: recebe requisições HTTP e define as respostas da API.
+-   `application.dto`: contém os objetos de transferência de dados das
+    requisições e respostas.
+-   `application.service`: coordena os casos de uso da aplicação.
+-   `domain`: concentra entidades, regras de negócio, handlers e
+    exceções do domínio.
+-   `infrastructure`: contém componentes de infraestrutura, configuração
+    e repositórios de persistência.
 
-- `controller`: recebe requisições HTTP e define as respostas da API.
-- `application.dto`: contém os objetos de transferência de dados utilizados nas requisições e respostas.
-- `application.service`: coordena os casos de uso da aplicação.
-- `domain`: concentra as entidades, regras de negócio, handlers e exceções do domínio.
-- `infrastructure`: contém componentes de infraestrutura, configuração e repositórios de persistência.
+### Modelagem do domínio
+
+-   `Product`: representa um produto e controla suas operações de
+    estoque.
+-   `OrderItem`: representa um produto dentro de um pedido, registrando
+    quantidade e preço unitário.
+-   `Order`: representa o pedido, seus itens, valores e estado atual.
+-   `OrderStatus`: define os estados possíveis de um pedido.
+-   `Payment`: representa o pagamento associado ao pedido.
+-   `PaymentMethod`: define os métodos de pagamento disponíveis.
+-   `PaymentStatus`: representa o estado do pagamento.
 
 ## API REST
 
-A aplicação disponibiliza os seguintes endpoints:
+Endpoints disponibilizados:
 
-| Método | Endpoint | Descrição |
-|---|---|---|
-| GET | `/api/orders` | Verifica se a API está funcionando. |
-| POST | `/api/orders` | Recebe e processa um pedido. |
-| GET | `/api/products/{id}` | Consulta um produto pelo ID. |
+  -----------------------------------------------------------------------
+  Método                  Endpoint                Descrição
+  ----------------------- ----------------------- -----------------------
+  GET                     `/api/orders`           Verificação de
+                                                  funcionamento da API.
+                                                  Não consulta pedidos.
+
+  POST                    `/api/orders`           Recebe e processa um
+                                                  pedido.
+
+  GET                     `/api/products/{id}`    Consulta um produto
+                                                  pelo ID.
+  -----------------------------------------------------------------------
 
 ### Exemplo de criação de pedido
 
@@ -118,7 +140,7 @@ A aplicação disponibiliza os seguintes endpoints:
 
 `POST /api/orders`
 
-```json
+``` json
 {
   "customerName": "João",
   "paymentMethod": "PIX",
@@ -137,7 +159,7 @@ A aplicação disponibiliza os seguintes endpoints:
 
 **Exemplo de resposta**
 
-```json
+``` json
 {
   "customerName": "João",
   "discountAmount": 610.00,
@@ -163,180 +185,243 @@ A aplicação disponibiliza os seguintes endpoints:
 }
 ```
 
+Os valores acima são ilustrativos e dependem dos produtos cadastrados e
+das regras de negócio aplicadas.
+
 ### DTOs
 
-Foram implementados os seguintes DTOs:
+-   `CreateOrderRequest`: define os dados aceitos para criação de um
+    pedido.
+-   `CreateOrderItemRequest`: define o produto e a quantidade de cada
+    item.
+-   `OrderResponse`: define as informações retornadas após o
+    processamento.
+-   `OrderItemResponse`: representa os itens presentes na resposta.
 
-- `CreateOrderRequest`: define os dados aceitos para criação de um pedido.
-- `CreateOrderItemRequest`: define o produto e a quantidade de cada item.
-- `OrderResponse`: define as informações retornadas após o processamento.
-- `OrderItemResponse`: representa os itens presentes na resposta.
-
-A separação entre DTOs e entidades evita expor diretamente os objetos internos do domínio e permite controlar quais informações entram e saem da API.
+A separação entre DTOs e entidades evita expor diretamente os objetos
+internos do domínio e permite controlar quais informações entram e saem
+da API.
 
 ### Respostas HTTP
 
-| Status | Descrição | Exemplo |
-|---|---|---|
-| 201 Created | Pedido criado e confirmado. | Processamento concluído com sucesso. |
-| 400 Bad Request | Requisição inválida. | Falha na validação dos dados de entrada. |
-| 404 Not Found | Recurso não encontrado. | Produto inexistente no catálogo. |
-| 422 Unprocessable Content | Pedido rejeitado por uma regra de negócio. | Pagamento recusado ou estoque insuficiente. |
+  -----------------------------------------------------------------------
+  Status                              Descrição
+  ----------------------------------- -----------------------------------
+  `201 Created`                       Pedido criado e confirmado.
 
-## Decisões técnicas
+  `400 Bad Request`                   Requisição inválida.
 
-Esta seção documenta algumas decisões tomadas durante o desenvolvimento, explicando os motivos e os problemas que cada escolha busca resolver.
+  `404 Not Found`                     Produto não encontrado.
 
-### Modelagem do domínio
+  `409 Conflict`                      Conflito de concorrência otimista.
 
-- **Responsabilidade do estoque no Product:** as operações de adição e remoção de estoque ficam na própria classe `Product`, pois o produto é responsável por controlar sua quantidade disponível.
+  `422 Unprocessable Content`         Pedido rejeitado por uma regra de
+                                      negócio, como pagamento recusado ou
+                                      estoque insuficiente.
+  -----------------------------------------------------------------------
 
-- **Registro do preço no OrderItem:** o preço unitário é armazenado no momento da criação do item. Dessa forma, alterações futuras no preço de um produto não modificam o valor de pedidos já criados.
+## Regras de negócio simuladas
 
-- **Encapsulamento das coleções:** a lista de itens do pedido é mantida internamente, e o getter retorna uma cópia não modificável. Isso evita alterações externas diretas na coleção.
+### Pagamento
 
-- **Uso de BigDecimal:** valores monetários são representados com `BigDecimal` para evitar problemas de precisão comuns em operações financeiras realizadas com tipos de ponto flutuante.
+-   PIX e cartão de débito são aprovados automaticamente.
+-   Cartões de crédito são aprovados quando o valor não ultrapassa R\$
+    5.000,00.
+-   Cartões de crédito acima de R\$ 5.000,00 são recusados.
 
-### Processamento dos pedidos
+Não existe integração com um gateway de pagamento real; o comportamento
+é simulado para exercitar o fluxo de processamento.
 
-- **Chain of Responsibility:** cada etapa do processamento possui um handler independente. Isso reduz o acoplamento entre as regras de negócio e facilita a manutenção e evolução da cadeia.
+### Descontos
 
-- **Separação das responsabilidades:** validação, verificação de estoque, descontos, frete, pagamento e confirmação são responsabilidades de handlers distintos.
+-   Pedidos de até R\$ 500,00 recebem 3% de desconto.
+-   Pedidos acima de R\$ 500,00 recebem 10% de desconto.
 
-- **Ordem de execução dos handlers:** a sequência foi definida para que as validações ocorram antes das operações financeiras e a confirmação aconteça somente após a aprovação do pagamento.
+### Frete
 
-- **Montagem centralizada da cadeia:** a classe `OrderProcessingChain` é responsável por instanciar e conectar os handlers, evitando que essa configuração fique espalhada pelo código.
+-   Pedidos de até R\$ 100,00 pagam R\$ 20,00.
+-   Pedidos acima de R\$ 100,00 e até R\$ 500,00 pagam R\$ 15,00.
+-   Pedidos acima de R\$ 500,00 possuem frete grátis.
 
-### Regras de negócio
+Os descontos e o frete são calculados sobre o subtotal original do
+pedido.
 
-- **Verificação de estoque antes da baixa:** o estoque é verificado antes do pagamento, mas só é efetivamente reduzido depois da aprovação. Assim, pedidos com pagamento rejeitado não alteram o estoque.
+## Decisões técnicas relevantes
 
-- **Revalidação de estoque na confirmação:** o estoque é verificado novamente antes da baixa. Isso reduz o risco de utilizar informações desatualizadas da verificação anterior.
+### Domínio e valores monetários
 
-- **Validação antes da alteração:** a baixa de estoque utiliza dois loops: primeiro verifica se todos os produtos possuem quantidade suficiente; depois realiza as remoções. Isso evita baixas parciais em caso de estoque insuficiente no cenário sequencial.
+-   **Estoque encapsulado em `Product`:** as operações de adição e
+    remoção ficam na própria entidade, que controla sua quantidade
+    disponível.
+-   **Preço registrado em `OrderItem`:** o preço unitário é armazenado
+    no momento da criação do item. Alterações futuras no preço do
+    produto não modificam pedidos já criados.
+-   **Coleções protegidas:** a lista de itens do pedido é mantida
+    internamente e exposta por meio de uma cópia não modificável.
+-   **`BigDecimal`:** utilizado para representar valores monetários,
+    evitando problemas de precisão de tipos de ponto flutuante.
+-   **Transições de estado controladas:** `Order` utiliza métodos como
+    `process()`, `confirm()` e `reject()` em vez de permitir alterações
+    livres de status.
 
-- **Exceção específica para falta de estoque:** `NoStockQuantityException` representa uma situação específica de falta de estoque, permitindo distingui-la de outras falhas de processamento.
+### Processamento e estoque
 
-- **Criação do pagamento no PaymentHandler:** o objeto `Payment` só é criado quando o pedido chega à etapa de pagamento, evitando representar um pagamento antes de ele ser efetivamente processado.
+-   Cada etapa do fluxo possui um handler independente.
+-   A cadeia é montada centralizadamente por `OrderProcessingChain`.
+-   O estoque é verificado antes das etapas finais, mas sua baixa ocorre
+    somente na confirmação.
+-   O estoque é revalidado antes da baixa, reduzindo o risco de utilizar
+    informações desatualizadas.
+-   A confirmação verifica os itens antes de realizar as remoções,
+    evitando baixas parciais no cenário sequencial testado.
+-   Rejeições normais de negócio são representadas pelo status
+    `REJECTED` e podem ser persistidas para manter o histórico do
+    processamento.
 
-- **Simulação de pagamento:** PIX e cartão de débito são aprovados automaticamente. Cartões de crédito são aprovados quando o valor não ultrapassa R$ 5.000,00. Essa regra permite testar diferentes resultados sem integração com um gateway real.
+### API e tratamento de erros
 
-- **Descontos calculados sobre o subtotal original:** pedidos de até R$ 500,00 recebem 3% de desconto; pedidos acima desse valor recebem 10%.
+-   A injeção de dependência do Spring fornece os componentes e suas
+    dependências.
+-   `OrderService` coordena a criação do pedido e o início da cadeia.
+-   `@Valid` e Jakarta Bean Validation verificam os dados recebidos pela
+    API.
+-   `GlobalExceptionHandler`, com `@RestControllerAdvice` e
+    `@ExceptionHandler`, centraliza a conversão de exceções em respostas
+    HTTP.
+-   Rejeições de negócio, como falta de estoque ou pagamento recusado,
+    são diferentes de exceções que interrompem o fluxo por dados
+    inválidos ou recursos inexistentes.
 
-- **Frete calculado sobre o subtotal original:** pedidos de até R$ 100,00 pagam R$ 20,00; pedidos acima de R$ 100,00 e até R$ 500,00 pagam R$ 15,00; acima de R$ 500,00 possuem frete grátis.
+### Persistência, transações e concorrência
 
-### Controle de estado e valores monetários
+-   PostgreSQL é utilizado como banco de dados relacional.
+-   `ProductRepository` e `OrderRepository` estendem `JpaRepository`.
+-   As entidades `Product`, `Order`, `OrderItem` e `Payment` são
+    mapeadas com JPA.
+-   `Order` possui relacionamento `@OneToMany` com `OrderItem` e
+    `@OneToOne` com `Payment`.
+-   O relacionamento com pagamento é opcional, pois um pedido pode ser
+    rejeitado antes da etapa de pagamento.
+-   `CascadeType.PERSIST` propaga a persistência do pedido para seus
+    itens e pagamento, quando existente.
+-   `orphanRemoval = true` permite remover do banco itens que deixam de
+    pertencer ao pedido.
+-   `@Transactional` em `OrderService.receberPedido()` mantém o
+    processamento dentro de uma transação.
+-   O Hibernate utiliza **Dirty Checking** para detectar alterações em
+    entidades gerenciadas, como a redução do estoque, e sincronizá-las
+    com o banco.
+-   Exceções que provocam rollback desfazem as alterações da transação.
+-   Rejeições normais de negócio não provocam rollback automaticamente,
+    permitindo persistir pedidos rejeitados.
+-   `@Version` em `Product` habilita o **Optimistic Locking**,
+    permitindo detectar conflitos quando operações concorrentes tentam
+    atualizar uma versão desatualizada do produto.
+-   `ProductCatalogInitializer` cadastra produtos de demonstração quando
+    a aplicação é inicializada e o banco ainda não possui produtos.
 
-- **Transições de estado controladas:** em vez de permitir alterações livres por meio de um `setStatus()`, a classe `Order` possui métodos específicos como `process()`, `confirm()` e `reject()`. Cada método controla quais transições são permitidas.
+Durante o desenvolvimento, foi utilizado
+`spring.jpa.hibernate.ddl-auto=update` para atualizar a estrutura do
+banco conforme os mapeamentos das entidades.
 
-- **Prevenção de processamento duplicado:** um pedido só pode iniciar o processamento quando está no estado `CREATED`. Pedidos em processamento, confirmados ou rejeitados não podem iniciar novamente.
+## Testes e qualidade
 
-- **Arredondamento centralizado no domínio:** os valores de desconto e frete são arredondados para duas casas decimais nos respectivos setters, enquanto o valor final é arredondado no cálculo do pedido. Isso centraliza a regra de precisão monetária na classe `Order`.
+A suíte automatizada utiliza **JUnit 5** e **Mockito**, com testes
+unitários e de integração.
 
-### API REST e Spring Boot
+Os testes unitários verificam handlers, regras de negócio, limites de
+valores, transições de estado, validações e a orquestração do
+`OrderService` com dependências simuladas.
 
-- **Injeção de dependência:** os componentes gerenciados pelo Spring são fornecidos por injeção de dependência, evitando que as dependências da aplicação sejam instanciadas manualmente em diferentes classes.
+Os testes de integração verificam o comportamento entre componentes
+reais da aplicação e, quando aplicável, a persistência no PostgreSQL.
 
-- **Separação entre DTOs e entidades:** `CreateOrderRequest` define os dados aceitos pela API, enquanto `OrderResponse` define os dados retornados. Isso evita expor diretamente a entidade `Order` e permite controlar a comunicação com os clientes.
+Entre os cenários cobertos estão:
 
-- **Validação na entrada da API:** `@Valid` e as anotações do Jakarta Bean Validation verificam os dados recebidos antes da execução do serviço.
+-   Validações de entradas nulas, textos em branco e listas vazias.
+-   Encadeamento dos handlers.
+-   Limites de desconto, frete e aprovação de pagamento.
+-   Estoque suficiente, exato e insuficiente.
+-   Rejeição sem baixa indevida de estoque.
+-   Persistência de pedidos rejeitados por regras de negócio.
+-   Não persistência de pedidos com dados inválidos.
+-   Tratamento HTTP de exceções.
+-   Conflitos de concorrência otimista.
 
-- **Service como coordenador do processamento:** `OrderService` é responsável por transformar os dados da requisição em objetos do domínio e iniciar a cadeia de handlers.
+**Resultado atual da suíte:** 45 testes executados, sem falhas ou erros.
 
-- **Tratamento global de exceções:** `GlobalExceptionHandler`, utilizando `@RestControllerAdvice` e `@ExceptionHandler`, centraliza a conversão de exceções em respostas HTTP.
+### Executar os testes
 
-- **Exceção específica para produto inexistente:** `ProductNotFoundException` representa a tentativa de consultar um produto que não existe no banco de dados, resultando em HTTP 404.
+No Windows (PowerShell):
 
-- **Separação entre rejeições de negócio e exceções:** rejeições normais do processamento, como pagamento recusado ou estoque insuficiente identificado durante a validação, são representadas pelo status `REJECTED` e retornadas com HTTP 422. Exceções são utilizadas para situações excepcionais que interrompem o fluxo normal.
-
-- **Status HTTP conforme o resultado:** pedidos confirmados retornam HTTP 201; pedidos rejeitados por regras de negócio retornam HTTP 422; recursos inexistentes retornam HTTP 404.
-
-### Persistência com JPA e PostgreSQL
-
-- **Persistência relacional:** PostgreSQL foi introduzido como banco de dados da aplicação, substituindo o catálogo temporário em memória.
-
-- **Spring Data JPA:** os repositórios `ProductRepository` e `OrderRepository` estendem `JpaRepository`, disponibilizando operações de persistência e consulta sem necessidade de implementar manualmente as operações básicas.
-
-- **Mapeamento das entidades:** `Product`, `Order`, `OrderItem` e `Payment` foram configuradas como entidades JPA utilizando `@Entity`, `@Table`, `@Id` e `@GeneratedValue`.
-
-- **Relacionamento entre pedido e itens:** `Order` utiliza `@OneToMany` e `OrderItem` utiliza `@ManyToOne`. Um pedido pode possuir vários itens, enquanto cada item pertence a um único pedido.
-
-- **Relacionamento entre pedido e pagamento:** foi utilizado `@OneToOne` entre `Order` e `Payment`. A chave estrangeira `payment_id` fica na tabela `orders`.
-
-- **Pagamento opcional:** a associação com `Payment` permite valor nulo, pois um pedido pode ser rejeitado por falta de estoque antes de chegar à etapa de pagamento.
-
-- **Cascade Persist:** a persistência do pedido propaga a persistência dos seus itens e do pagamento associado, quando existente. O relacionamento com `Product` não propaga a persistência, pois produtos são entidades independentes e compartilhadas.
-
-- **Orphan Removal:** `orphanRemoval = true` no relacionamento entre `Order` e `OrderItem` permite remover do banco os itens que deixam de pertencer ao pedido.
-
-- **Transações com @Transactional:** o método `receberPedido()` do `OrderService` utiliza `@Transactional` para manter o processamento do pedido dentro de uma única transação, abrangendo consultas, regras de negócio, atualização do estoque e persistência.
-
-- **Dirty Checking:** alterações realizadas em entidades gerenciadas pelo contexto de persistência, como a redução do estoque de um produto, são detectadas pelo Hibernate e sincronizadas com o banco durante a transação, sem necessidade de executar `save()` explicitamente para cada alteração.
-
-- **Rollback:** exceções que provocam rollback dentro da transação desfazem as alterações realizadas no banco durante aquela operação, preservando a consistência dos dados.
-
-- **Persistência de pedidos rejeitados:** rejeições normais de negócio não provocam rollback automaticamente. Dessa forma, pedidos rejeitados podem ser persistidos para manter o histórico do processamento.
-
-- **Inicialização de produtos de demonstração:** `ProductCatalogInitializer` implementa `CommandLineRunner` para cadastrar produtos automaticamente no PostgreSQL quando o banco ainda não possui produtos.
-
-- **Configuração do Hibernate:** `spring.jpa.hibernate.ddl-auto=update` foi utilizada durante o desenvolvimento para atualizar a estrutura do banco conforme os mapeamentos das entidades.
-
-### Testes e qualidade de código
-
-- **Estratégia de testes unitários isolados:** os handlers da cadeia (`OrderValidationHandler`, `ProductValidationHandler`, `StockValidationHandler`, `DiscountHandler`, `ShippingHandler`, `PaymentHandler` e `OrderConfirmationHandler`) são testados de forma unitária, sem inicializar o contexto do Spring ou banco de dados relacional. Isso garante testes rápidos, determinísticos e de fácil manutenção.
-
-- **Uso de Mockito na camada de serviço:** em `OrderServiceTest`, as dependências (`ProductRepository`, `OrderRepository` e `OrderProcessingChain`) são simuladas via `mock()`, permitindo validar de forma isolada a orquestração do caso de uso, como a criação dos itens do pedido, o lançamento de `ProductNotFoundException`, o salvamento no repositório e a execução da cadeia mesmo quando o pedido é rejeitado.
-
-- **Validação do encadeamento da Chain:** foi utilizado mock do próximo handler (`setNextHandler`) para garantir que os handlers repassam a execução adiante quando as condições de processamento são satisfeitas.
-
-- **Testes de limites (Boundary Testing):** regras de negócio que envolvem faixas de valores foram amplamente cobertas em seus limites exatos:
-  - **Frete:** faixas de até R$ 100,00 (R$ 20,00), de R$ 100,01 a R$ 500,00 (R$ 15,00) e acima de R$ 500,00 (frete grátis).
-  - **Descontos:** pedidos de até R$ 500,00 (3%) e acima de R$ 500,00 (10%).
-  - **Pagamentos com cartão de crédito:** limite de R$ 5.000,00 (aprovado) e acima de R$ 5.000,00 (rejeitado).
-
-- **Revalidação e consistência de estoque na confirmação:** testes unitários cobrem cenários com estoque suficiente, estoque exato e estoque insuficiente. Além disso, foi validada a atomicidade lógica em `OrderConfirmationHandler`: caso um dos itens da lista não possua estoque, a operação é rejeitada e nenhum dos itens anteriores tem seu estoque debitado.
-
-- **Ajuste de tratamento na confirmação do pedido:** na etapa de confirmação, pedidos com pagamento não aprovado ou estoque insuficiente transicionam para o estado `REJECTED` via `order.reject()` e retornam `false`, garantindo que o status seja registrado e persistido de maneira consistente em vez de abortar o fluxo abruptamente.
-
-- **Validações defensivas:** testes cobrem casos de entradas nulas (`null`), campos de texto em branco ou contendo apenas espaços, e coleções de itens vazias.
-
-## Execução dos testes
-
-Para executar a suíte completa de testes automatizados com o Maven Wrapper:
-
-```bash
-./mvnw test
-```
-
-No Windows (PowerShell / Prompt de Comando):
-
-```powershell
+``` powershell
 .\mvnw.cmd test
 ```
 
-## Progresso
+Em ambientes com shell Unix:
 
-🚧 Em desenvolvimento.
+``` bash
+./mvnw test
+```
 
-| Etapa | Descrição | Status |
-|---|---|---|
-| 1 | Fundamentos e definição do domínio | Concluída |
-| 2 | Modelagem das classes Java | Concluída |
-| 3 | Implementação do Chain of Responsibility | Concluída |
-| 4 | Regras de negócio | Concluída |
-| 5 | API REST com Spring Boot | Concluída |
-| 6 | Persistência com JPA e PostgreSQL | Concluída |
-| 7 | Testes e qualidade de código | Concluída |
-| 8 | Finalização e preparação para portfólio | Pendente |
+## Execução com Docker
 
-## Objetivo de aprendizado
+O projeto possui configuração com Docker e Docker Compose para executar
+a aplicação e o PostgreSQL em containers.
 
-Este projeto faz parte dos estudos de Java e Spring Boot, com foco em:
+1. Crie o arquivo `.env` a partir do modelo disponibilizado:
+   - Linux/macOS: `cp .env.example .env`
+   - Windows (PowerShell): `Copy-Item .env.example .env`
 
-- Compreender profundamente o padrão Chain of Responsibility.
-- Aplicar princípios SOLID e boas práticas de orientação a objetos.
-- Desenvolver uma API REST.
-- Trabalhar com persistência de dados utilizando JPA e PostgreSQL.
-- Compreender transações, Dirty Checking e rollback.
-- Escrever testes automatizados.
-- Desenvolver autonomia na construção e evolução de projetos de software.
+2. Com o Docker Desktop em execução, inicie os containers:
+
+``` bash
+docker compose up --build
+```
+
+Para encerrar os containers sem remover os dados persistidos:
+
+``` bash
+docker compose down
+```
+
+> O arquivo `.env` contém configurações locais e credenciais, permanecendo ignorado pelo Git. Utilize o `.env.example` como gabarito para configurar suas variáveis locais.
+
+## Documentação da API
+
+A documentação interativa da API é disponibilizada por Swagger /
+OpenAPI. Com a aplicação em execução, acesse:
+
+`http://localhost:8080/swagger-ui/index.html`
+
+## Status do projeto
+
+**Projeto concluído para fins de estudo e portfólio.**
+
+  Etapa   Descrição                                  Status
+  ------- ------------------------------------------ -----------
+  1       Fundamentos e definição do domínio         Concluída
+  2       Modelagem das classes Java                 Concluída
+  3       Implementação do Chain of Responsibility   Concluída
+  4       Regras de negócio                          Concluída
+  5       API REST com Spring Boot                   Concluída
+  6       Persistência com JPA e PostgreSQL          Concluída
+  7       Testes e qualidade de código               Concluída
+  8       Finalização e preparação para portfólio    Concluída
+
+## Objetivos de aprendizado
+
+Este projeto foi desenvolvido para praticar:
+
+-   O padrão Chain of Responsibility.
+-   Orientação a objetos e princípios SOLID.
+-   Desenvolvimento de APIs REST com Spring Boot.
+-   Persistência com JPA e PostgreSQL.
+-   Transações, Dirty Checking e rollback.
+-   Controle de concorrência otimista.
+-   Testes unitários e de integração.
+-   Organização e evolução incremental de uma aplicação.
+
+------------------------------------------------------------------------
+
+Projeto desenvolvido como parte dos estudos de Java e Spring Boot.
